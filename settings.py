@@ -1,18 +1,8 @@
+# encoding: uf-8
+
 ## Example settings.py file for dvbbox
 
-# dvbbox uses a redis database exclusively, no other support is envisionned yet
-DATABASE = {
-    'host': 'localhost',
-    'port': 6379,
-    'db': 0,
-    'password': None
-    }
-
-# folders in which media files can be found
-MEDIA_FOLDERS = [
-    '/somewhere/over/the/rainbow',
-    ]
-
+# a channel is a handler name for a multicast stream
 CHANNELS = {
     85: {
         'name': 'My Channel',
@@ -29,3 +19,18 @@ CHANNELS = {
         'udp_multicast': '239.54.100.2:1234'
         },
     }
+
+# dvbbox uses a redis database exclusively, no other support is envisionned yet
+DATABASE = {
+    'host': 'localhost',
+    'port': 6379,
+    'db': 0,
+    'password': None
+    }
+
+LOGFILE = '/var/tmp/dvbbox.log'
+
+# folders in which media files can be found
+MEDIA_FOLDERS = [
+    '/somewhere/over/the/rainbow',
+    ]

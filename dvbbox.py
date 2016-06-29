@@ -3,6 +3,7 @@
 
 
 import imp
+import logging
 import os
 import redis
 import shlex
@@ -15,6 +16,13 @@ settings = imp.load_source('settings', '/etc/dvbbox/settings.py')
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)s %(funcName)s %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+    filename=settings.LOGFILE,
+    level=logging.DEBUG
+    )
 
 DB = redis.Redis(**settings.DATABASE)
 
@@ -67,7 +75,9 @@ class Media(object):
                     filenames[filename] = 1
                     media.add(os.path.join(media_folder, filename))
             except OSError:
-                print '{} does not exist'.format(media_folder)
+                msg = '{} does not exist'.format(media_folder)
+                logging.error(msg)
+                print msg
         return media
 
     @property
@@ -81,6 +91,7 @@ class Media(object):
                 DB.zadd('files', filepath, 0)
                 msg = '{redis_handler} : ADD {filepath}'.format(
                     redis_handler = DB, filepath = filepath)
+                logging.info(msg)
                 print msg
             self.filepath = filepath
             return True
@@ -90,6 +101,7 @@ class Media(object):
                 # if there was a reference to the file in REDIS database
                 msg = '{redis_handler} : DEL {filepath}'.format(
                     redis_handler = DB, filepath = self.filepath)
+                logging.info(msg)
                 print msg
             self.filepath = None
             self.duration = 0
@@ -124,7 +136,9 @@ class Media(object):
             DB.zadd('files', self.filepath, self.duration)
             return True
         else:
-            raise ValueError('{} does not exist'.format(self.filepath))
+            msg = '{} does not exist'.format(self.filepath)
+            logging.error(msg)
+            raise ValueError(msg)
     
     def update(self):
         """updates attributes"""
@@ -132,7 +146,9 @@ class Media(object):
             try:
                 self.duration = self.__duration__
             except OSError:
-                raise OSError('check if avprobe and gawk are installed')
+                msg = 'check if avprobe and gawk are installed'
+                logging.error(msg)
+                raise OSError(msg)
             except Exception:
                 self.duration = 0
             DB.zadd('files', self.filepath, self.duration)
@@ -152,7 +168,9 @@ class Media(object):
         if not timestamps:
             # the file is not scheduled at all
             os.remove(self.filepath)
-            print "DEL {}".format(self.filepath)
+            msg = "DEL {}".format(self.filepath)
+            logging.info(msg)
+            print msg
             self.update()
             return True
         else:
@@ -163,6 +181,7 @@ class Media(object):
                     for i in timestamps
                     ])
                 )
+            logging.warning(msg)
             raise OSError(msg)
 #EOF
     
