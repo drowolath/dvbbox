@@ -4,6 +4,7 @@
 
 import imp
 import os
+import redis
 import shlex
 import shutil
 import sub as sub
@@ -15,6 +16,7 @@ settings = imp.load_source('settings', '/etc/dvbbox/settings.py')
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+DB = redis.Redis(**settings.DATABASE)
 
 class Media(object):
     """a media object is a file with .ts extension.
@@ -24,7 +26,7 @@ class Media(object):
         self.filename = filename
         if not filename.endswith('.ts'):
             self.filename += '.ts'
-        files = settings.DB.zrange('files', 0, -1, withscore=True)
+        files = DB.zrange('files', 0, -1, withscore=True)
         #zscan_iter isn't available before redis-server:2.8
         infos = filter(lambda x: x[0].split('/')[-1] == self.filename, files)
         if not infos:
@@ -76,18 +78,18 @@ class Media(object):
         if search:
             filepath = search.pop()
             if not hasattr(self, 'filepath'):
-                settings.DB.zadd('files', filepath, 0)
+                DB.zadd('files', filepath, 0)
                 msg = '{redis_handler} : ADD {filepath}'.format(
-                    redis_handler = settings.DB, filepath = filepath)
+                    redis_handler = DB, filepath = filepath)
                 print msg
             self.filepath = filepath
             return True
         else:
             # file is not on disk, we destroy any reference to it everywhere
-            if settings.DB.zrem('files', self.filepath):
+            if DB.zrem('files', self.filepath):
                 # if there was a reference to the file in REDIS database
                 msg = '{redis_handler} : DEL {filepath}'.format(
-                    redis_handler = settings.DB, filepath = self.filepath)
+                    redis_handler = DB, filepath = self.filepath)
                 print msg
             self.filepath = None
             self.duration = 0
@@ -98,9 +100,9 @@ class Media(object):
         """goes through the sorted sets ddmmyyyy:id and checks
            every occurence of filename""" 
         schedules = {}
-        for key in [i for i in settings.DB.keys() if ':' in i]:
+        for key in [i for i in DB.keys() if ':' in i]:
             channel = int(key.split(':')[1])
-            infos = settings.DB.zrange(key, 0, -1, withscores=True)
+            infos = DB.zrange(key, 0, -1, withscores=True)
             for filename, timestamp in infos:
                 if filename.startswith(self.filename):
                     if not schedules.has_key(channel):
@@ -118,8 +120,8 @@ class Media(object):
             shutil.move(oldpath, newpath)
             self.filepath = newpath
             self.filename = newname
-            settings.DB.zrem('files', oldpath)
-            settings.DB.zadd('files', self.filepath, self.duration)
+            DB.zrem('files', oldpath)
+            DB.zadd('files', self.filepath, self.duration)
             return True
         else:
             raise ValueError('{} does not exist'.format(self.filepath))
@@ -133,7 +135,7 @@ class Media(object):
                 raise OSError('check if avprobe and gawk are installed')
             except Exception:
                 self.duration = 0
-            settings.DB.zadd('files', self.filepath, self.duration)
+            DB.zadd('files', self.filepath, self.duration)
 
     def delete(self):
         """deletes a file on disk given it's not scheduled for broadcast"""
