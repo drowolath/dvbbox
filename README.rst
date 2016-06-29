@@ -1,5 +1,5 @@
 dvbbox: Create your own DVB-IP channels
-=======================================
+1;2802;0c=======================================
 
 dvbbox is a very simple library for managing static media file and orchestrating their streaming to
 allow one to create a TV channel.
@@ -46,6 +46,11 @@ Installation
 
    $ pip install dvbbox
 
+Configuration
+-------------
+
+dvbbox awaits `/etc/dvbbox/settings.py`. An example can be found at the root of this repo.
+   
 REST API
 --------
 
