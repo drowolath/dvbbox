@@ -3,6 +3,7 @@
 
 
 import collections
+import flask
 import imp
 import logging
 import os
@@ -13,12 +14,29 @@ import subprocess as sub
 import sys
 import time
 import xmltodict
+from api.auth import auth
+from api.decorators import json
+from api.models import db, User
+from api.errors import not_found, not_allowed
+from api.v1 import api as api_blueprint, get_catalog as v1_catalog
+from api.token import token as token_blueprint
+from flask.ext.script import Manager as flask_manager, prompt, prompt_bool
 from datetime import datetime, timedelta
 from itertools import chain, islice, izip
 settings = imp.load_source('settings', '/etc/dvbbox/settings.py')
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+__all__ = [
+    'app',
+    'Channel',
+    'cli',
+    'Media',
+    'Playlist',
+    'System',
+    ]
+
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s %(funcName)s %(message)s',
@@ -30,9 +48,42 @@ logging.basicConfig(
 DB = redis.Redis(**settings.DATABASE)
 _ntuple_diskusage = collections.namedtuple('usage', 'total used free')
 
+
+## defining Flask REST API entry points
+
+app = flask.Flask(__name__)
+
+app.config.from_pyfile('/etc/dvbbox/restconfig.py', silent=True)
+db.init_app(app)
+
+app.register_blueprint(api_blueprint, url_prefix='/api/dvbbox/v1')
+
+if app.config['USE_TOKEN_AUTH']:
+    app.register_blueprint(token_blueprint, url_prefix='/api/dvbbox/auth')
+
+@app.route('/api/dvbbox/')
+@auth.login_required
+@json
+def index():
+    u"""Ressource qui renvoie le catalogue des ressources"""
+    return {'versions': {'v1': v1_catalog()}}
+
+@app.errorhandler(404)
+@auth.login_required
+def not_found_error(e):
+    return not_found('item not found')
+
+@app.errorhandler(405)
+def method_not_allowed_error(e):
+    return not_allowed()
+
+## creating cli()
+cli = flask_manager(app)
+
+## Base classes
 class System(object):
     """collection of static methods related to the system state"""
-    
+
     @staticmethod
     def which(program):
         u"""Vérifie qu'un exécutable existe bel et bien"""
@@ -137,7 +188,7 @@ class Media(object):
 
     def __repr__(self):
         return '<Media {}>'.format(self.filepath)
-    
+
     @staticmethod
     def all():
         """method to get all mediafiles currently existing on disk(s).
@@ -189,7 +240,7 @@ class Media(object):
     @property
     def schedules(self):
         """goes through the sorted sets ddmmyyyy:id and checks
-           every occurence of filename""" 
+           every occurence of filename"""
         schedules = {}
         for key in [i for i in DB.keys() if ':' in i]:
             channel = int(key.split(':')[1])
@@ -218,7 +269,7 @@ class Media(object):
             msg = '{} does not exist'.format(self.filepath)
             logging.error(msg)
             raise ValueError(msg)
-    
+
     def update(self):
         """updates attributes"""
         if self.exists:
@@ -278,7 +329,7 @@ class Channel(object):
                 vars(self)[i] = j
 
     def __program__(self, date=None, db=DB):
-        """retreives informations about programs"""        
+        """retreives informations about programs"""
         dates = []
         programs = {}
         if not date:
@@ -326,7 +377,7 @@ class Channel(object):
                 'filepath': v['filepath'],
                 'timestamps': [i for i in v['timestamps'] if i>=marker]
                 } for k, v in programs.items()}
-            
+
             programs = {k: v for k, v in programs.items() if v['timestamps']}
         return programs
 
@@ -422,7 +473,7 @@ class Channel(object):
                     key, remotes[max(remotes.keys())])
                 logging.info(msg)
                 print msg
-            
+
     def createxspf(self, date=datetime.now().strftime('%d%m%Y'),
                    start='073000', marker=None):
         """creates a XSPF playlist from schedule in REDIS database"""
@@ -490,7 +541,7 @@ class Channel(object):
                         )
                 if stop <= start[1]:
                     stop = initial+86340
-                    
+
                 duration = stop - start[1]
                 if tsfile.duration < duration:
                     repeat = int(round(duration/tsfile.duration)) - 1
@@ -580,7 +631,7 @@ class Channel(object):
             # on a une erreur
             return result.message
 
-        
+
 class Playlist(object):
     """playlists manager and scheduler"""
     def __init__(self, filepath):
@@ -618,7 +669,7 @@ class Playlist(object):
                     start += checked[info].duration
             infos.append(data)
         return infos
-    
+
     def apply(self, service_id):
         """parsing the INI file"""
         infos = self.__read__()
@@ -659,8 +710,7 @@ class Playlist(object):
                 logging.info(msg)
                 result.append(msg)
         return result
-#EOF
-    
 
-                
-                
+if __name__ == '__main__':
+    cli.run()
+#EOF
