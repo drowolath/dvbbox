@@ -37,4 +37,14 @@ MEDIA_FOLDERS = [
 
 PLAYLISTS_FOLDER = 'playlists/',
 
+# peers with which the node can sync
+PEERS = [
+    {
+        'host': 'peer.fqdn',
+        'port': 6379,
+        'db': 0,
+        'password': None,
+        },
+    ]
+
 VLC_TELNET_PASSWORD = 'somethingdeeplysecret',
