@@ -1,6 +1,7 @@
 # encoding: uf-8
 
-## Example settings.py file for dvbbox
+## Example settings.py file for dvbbox; you must put your version in /etc/dvbbox/settings.py.
+## All variables defined in this example are mandatory.
 
 # a channel is a handler name for a multicast stream
 CHANNELS = {
