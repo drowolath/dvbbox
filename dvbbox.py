@@ -11,7 +11,9 @@ import shutil
 import sub as sub
 import sys
 import time
-from datetime import datetime
+import xmltodict
+from datetime import datetime, timedelta
+from itertools import chain, islice, izip
 settings = imp.load_source('settings', '/etc/dvbbox/settings.py')
 
 reload(sys)
@@ -58,7 +60,10 @@ class Media(object):
         process_1.stderr.close()
         result = process_2.communicate()[0].strip('\n')
         return eval(result)
-            
+
+    def __repr__(self):
+        return '<Media {}>'.format(self.filepath)
+    
     @staticmethod
     def all():
         """method to get all mediafiles currently existing on disk(s).
@@ -183,6 +188,255 @@ class Media(object):
                 )
             logging.warning(msg)
             raise OSError(msg)
+
+
+class Channel(object):
+    """represents a handler for a DVB-IP stream"""
+    def __init__(self, service_id):
+        self.service_id = int(service_id)
+        if not settings.CHANNELS.has_key(service_id):
+            msg = '{} is not configured in /etc/dvbbox/settings.py'.format(
+                self.service_id)
+            logging.error(msg)
+            raise ValueError(msg)
+        else:
+            for i, j in settings.CHANNELS[service_id]:
+                vars(self)[i] = j
+
+    def __program__(self, date=None):
+        """retreives informations about programs"""        
+        dates = []
+        programs = {}
+        if not date:
+            limit = datetime.today() - timedelta(30)
+            dates.append(limit.strftime('%d%m%Y'))
+            d = limit
+            for i in range(60):
+                d += timedelta(1)
+                dates.append(d.strftime('%d%m%Y'))
+        else:
+            dates = [date]
+        for date in dates:
+            infos = {}
+            key = '{0}:{1}'.format(date, self.service_id)
+            schedule = DB.zrange(key, 0, -1, withscores=True)
+            for filename, timestamp in schedule:
+                fileobj = Media(filename.split(':')[0])
+                if not infos.get(filename):
+                    infos[filename] = {
+                        'duration': fileobj.duration,
+                        'filepath': fileobj.filepath
+                        }
+                    infos[filename]['timestamps'] = []
+                infos[filename]['timestamps'].append(timestamp)
+            if len(dates) == 1:
+                return infos
+            else:
+                programs[date] = infos
+        return programs
+
+    def program(self, date=datetime.now().strftime('%d%m%Y'), timestamp=None):
+        """returns program of a given day, at a given timestamp"""
+        programs = self.__program__(date)
+        if programs and timestamp:
+            marker = timestamp - min(
+                [
+                    timestamp-item
+                    for sublist in [j['timestamps']
+                                    for i, j in programs.items()]
+                    for item in sublist if item<=timestamp
+                ]
+            )
+            programs = {k: {
+                'duration': v['duration'],
+                'filepath': v['filepath'],
+                'timestamps': [i for i in v['timestamps'] if i>=marker]
+                } for k, v in programs.items()}
+            
+            programs = {k: v for k, v in programs.items() if v['timestamps']}
+        return programs
+
+    def checkprogram(self, date):
+        """checks if a program for a given date is valid"""
+        key = '{0}:{1}'.format(date, self.service_id)
+        pipe = DB.pipeline()
+        jobs = pipe.zrange(
+            key,0,0,withscores=True).zrange(
+                key,-1,-1,withscores=True)
+        start, stop = jobs.execute()
+        programs = self.__program__(date)
+        if not programs:
+            logging.warning('No program for {0} on {1}'.format(
+                self.service_id, date))
+            return None
+        else:
+            no_show_files = [
+                filename for filename in programs if not Media(filename).exists
+                ]
+            if no_show_files:
+                msg = 'Following files do not exist: {}'.format(
+                    '\n'.join(no_show_files))
+                logging.error(msg)
+                return ValueError(msg)
+            else:
+                return True
+
+    def createxspf(self, date=datetime.now().strftime('%d%m%Y'),
+                   start='073000', marker=None):
+        """creates a XSPF playlist from schedule in REDIS database"""
+        key = '{0}:{1}'.format(date, self.service_id)
+        recalculated_start = 0
+        try:
+            initial = time.mktime(
+                time.strptime('{0} {1}'.format(date, start), '%d%m%Y %H%M%S')
+                )
+            xspf = {'playlist': {
+                '@xmlns': 'http://xspf.org/ns/0/',
+                '@xmlns:vlc':
+                    'http://www.videolan.org/vlc/playlist/ns/0/',
+                '@version': '1'}}
+            fulldate = '{day}/{month}/{year}'.format(
+                day=date[:2],
+                month=date[2:4],
+                year=date[4:]
+                )
+            xspf['playlist']['title'] = fulldate
+            xspf['playlist']['trackList'] = {'track': []}
+            other = {
+                'extension': {
+                    'vlc:option': [],
+                    'vlc:item': [],
+                    '@application': 'http://www.videolan.org/vlc/playlist/0'
+                    }
+                }
+            #  maintenant on récupère les films qui doivent être diffusés
+            media = DB.zrange(key, 0, -1, withscores=True)
+            if marker:
+                recalculated_start = marker - min(
+                    [
+                        marker-item
+                        for item in [i[1] for i in media] if item<=marker
+                    ]
+                )
+                media = DB.zrangebyscore(
+                    key, recalculated_start,
+                    initial+86400, withscores=True)
+
+            steps = izip(
+                *[
+                    chain(islice(media, i, None), islice(media, None, i))
+                    for i in range(2)
+                    ]
+                )
+            index = 0
+            while True:
+                uri = 'http://www.videolan.org/vlc/playlist/0'
+                start, stop = steps.next()
+                index += 1
+                extension = {
+                    '@application': uri,
+                    'vlc:id': index,
+                    'vlc:option': []
+                }
+                tsfile = Media(start[0].split(':')[0])
+                stop = stop[1]
+                if start[1] == recalculated_start:
+                    extension['vlc:option'].append(
+                        'start-time={0}'.format(
+                            (marker - recalculated_start)
+                            )
+                        )
+                if stop <= start[1]:
+                    stop = initial+86340
+                    
+                duration = stop - start[1]
+                if tsfile.duration < duration:
+                    repeat = int(round(duration/tsfile.duration)) - 1
+                    if repeat < 0:
+                        return None
+                    elif repeat:
+                        extension['vlc:option'].append(
+                            'input-repeat={0}'.format(repeat)
+                            )
+                track = {
+                    'location': 'file:///{0}'.format(tsfile.filepath),
+                    'duration': tsfile.duration
+                    }
+                track['extension'] = extension
+                xspf['playlist']['trackList']['track'].append(track)
+                other['extension']['vlc:item'].append({'@tid': str(index)})
+        except StopIteration:
+            document = xmltodict.unparse(xspf, pretty=True)
+            document = document.replace('></vlc:item>', '/>')
+            extensions = xmltodict.unparse(other, pretty=True)
+            extensions = extensions.replace(
+                '<?xml version="1.0" encoding="utf-8"?>',
+                ''
+                )
+            extensions = extensions.replace('\n', '\n\t')
+            extensions = extensions.replace('></vlc:item>', '/>')
+            result = document.split(
+                '</playlist>')[0]+extensions+'\n</playlist>'
+            return result
+        except Exception as exc:
+            result = exc
+            return result
+
+    def stream(self, duplicate=None):
+        """streams a xspf file"""
+        u"""Méthode permettant de lancer la diffusion IP de la chaine"""
+        moment = '{day}{month}{year}'.format(
+            day=str(time.localtime().tm_mday).zfill(2),
+            month=str(time.localtime().tm_mon).zfill(2),
+            year=str(time.localtime().tm_year)
+        )
+        result = self.createxspf(moment, timestamp=time.time())
+        if type(result) is unicode:
+            xspffile = os.path.join(
+                settings.PLAYLISTS_FOLDER,
+                str(self.service_id),
+                '{0}.xspf'.format(moment)
+                )
+            with open(xspffile, 'w') as f:
+                f.write(result)
+            if not duplicate:
+                cmd = ("cvlc %s -I telnet --telnet-host 0.0.0.0 "
+                       "--telnet-password %s --telnet-port %s "
+                       "--sout '#standard{"
+                       "access=udp,"
+                       "mux=ts{pid-video=%s,pid-audio=%s,pcr=100},"
+                       "dst=%s}' --playlist-tree --ttl 10 "
+                       "vlc://quit") % (
+                           xspffile,
+                           settings.VLC_TELNET_PASSWORD,
+                           self.telnet_port,
+                           self.pid_video,
+                           self.pid_audio,
+                           self.udp
+                        )
+            else:
+                default_dst = ("dst=udp{mux=ts{pid-video=%s,pid-audio=%s,"
+                               "pcr=100},dst=%s}") % (self.pid_video,
+                                                      self.pid_audio,
+                                                      self.udp)
+                duplicate.append(default_dst)
+                dst = ','.join(duplicate)
+                cmd = ("cvlc %s -I telnet --telnet-host 0.0.0.0 "
+                       "--telnet-password %s --telnet-port %s "
+                       "--sout '#duplicate{%s}  --playlist-tree --ttl 10 "
+                       "vlc://quit") % (
+                           xspffile,
+                           settings.VLC_TELNET_PASSWORD,
+                           self.telnet_port,
+                           dst)
+            process = sub.Popen(
+                shlex.split(cmd),
+                stdout=sub.PIPE,
+                stderr=sub.PIPE)
+            return process
+        else:
+            # on a une erreur
+            return result.message
 #EOF
     
 

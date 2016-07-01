@@ -34,3 +34,7 @@ LOGFILE = '/var/tmp/dvbbox.log'
 MEDIA_FOLDERS = [
     '/somewhere/over/the/rainbow',
     ]
+
+PLAYLISTS_FOLDER = 'playlists/',
+
+VLC_TELNET_PASSWORD = 'somethingdeeplysecret',
