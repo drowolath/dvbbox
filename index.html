@@ -1,0 +1,198 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>dvbbox &mdash; dvbbox 0.4 documentation</title>
+    
+    <link rel="stylesheet" href="static/default.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
+    <link rel="top" title="dvbbox 0.4 documentation" href="#" />
+    <link rel="next" title="Installation" href="install.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="install.html" title="Installation"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">dvbbox 0.4 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="dvbbox">
+<span id="id1"></span><h1>dvbbox<a class="headerlink" href="#dvbbox" title="Permalink to this headline">¶</a></h1>
+<p>dvbbox is a very simple library for managing static media file and
+orchestrating their streaming to allow one to create a TV channel.</p>
+<p>You will just have to tell dvbbox where you store your files and you can then use it
+to manage said files, create playlists and launch them for IP streaming.</p>
+<div class="admonition attention">
+<p class="first admonition-title">Attention</p>
+<p class="last">the media files must already be transcoded following the
+<a class="reference external" href="https://en.wikipedia.org/wiki/MPEG_transport_stream">MPEG-TS</a> standard</p>
+</div>
+<div class="section" id="how-to-use">
+<h2>How to use<a class="headerlink" href="#how-to-use" title="Permalink to this headline">¶</a></h2>
+<p>At the very moment, dvbbox requires an awful amount of presets before working properly.
+We are working on that, but bear with us as we explain why it is so.</p>
+<div class="section" id="data-storage">
+<h3>Data storage<a class="headerlink" href="#data-storage" title="Permalink to this headline">¶</a></h3>
+<p>dvbbox awaits data to be stored in a redis database (exclusively).</p>
+<ul class="simple">
+<li>you should have a dataset called &#8220;files&#8221;: this dataset is actually a sorted set
+where the keys are the filepaths of the media files, and the scores their duration.</li>
+<li>playlists are recorded as sorted sets also, named under the format &#8220;day:service_id&#8221;:
+the keys are strings under the format &#8220;filenames:index&#8221; (index being an arbitrary value),
+and their scores are the timestamp at which they are programmed to be played.</li>
+</ul>
+</div>
+<div class="section" id="settings">
+<h3>Settings<a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h3>
+<p>dvbbox requires you to have a file /etc/dvbbox/settings.py readable by the user actually
+using dvbbox. This file gathers all the settings useful to the application to work.</p>
+<p>It&#8217;s a python script, containing declarations of global values.</p>
+<div class="section" id="channels">
+<h4>CHANNELS<a class="headerlink" href="#channels" title="Permalink to this headline">¶</a></h4>
+<p>A dictionnary where the keys are service IDs; each one of them holds another dictionnary
+with the following keys: name, audio_pid, video_pid, vlc_telnet_port, udp_multicast</p>
+</div>
+<div class="section" id="database">
+<h4>DATABASE<a class="headerlink" href="#database" title="Permalink to this headline">¶</a></h4>
+<p>A dictionnary where the keys are keyword arguments used in the redis.Redis function.
+Essentially: host, port, db, password.</p>
+</div>
+<div class="section" id="logfile">
+<h4>LOGFILE<a class="headerlink" href="#logfile" title="Permalink to this headline">¶</a></h4>
+<p>A string representing the full path to the file holding the logs</p>
+</div>
+<div class="section" id="media-folders">
+<h4>MEDIA_FOLDERS<a class="headerlink" href="#media-folders" title="Permalink to this headline">¶</a></h4>
+<p>A list of absolute paths to directories where media files are stored</p>
+</div>
+<div class="section" id="playlists-folder">
+<h4>PLAYLISTS_FOLDER<a class="headerlink" href="#playlists-folder" title="Permalink to this headline">¶</a></h4>
+<p>A string representing the full path to the directory holding each channel XSPF file.</p>
+</div>
+<div class="section" id="peers">
+<h4>PEERS<a class="headerlink" href="#peers" title="Permalink to this headline">¶</a></h4>
+<p>This notion is important: dvbbox is designed to function as a cluster. So it can
+contact another server to update its content (playlists wise and media files wise).</p>
+<p>This settings is a list of dictionnaries. Where each dictionnary is a DATABASE parameter,
+only with a remote server settings.</p>
+</div>
+<div class="section" id="vlc-telnet-password">
+<h4>VLC_TELNET_PASSWORD<a class="headerlink" href="#vlc-telnet-password" title="Permalink to this headline">¶</a></h4>
+<p>A string representing a secret passphrase to access the telnet interface of a VLC stream.</p>
+</div>
+</div>
+</div>
+<div class="section" id="table-of-contents">
+<h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="install.html#install-from-source">Install from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#install-from-deb">Install from .deb</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">dvbbox</a><ul>
+<li><a class="reference internal" href="#how-to-use">How to use</a><ul>
+<li><a class="reference internal" href="#data-storage">Data storage</a></li>
+<li><a class="reference internal" href="#settings">Settings</a><ul>
+<li><a class="reference internal" href="#channels">CHANNELS</a></li>
+<li><a class="reference internal" href="#database">DATABASE</a></li>
+<li><a class="reference internal" href="#logfile">LOGFILE</a></li>
+<li><a class="reference internal" href="#media-folders">MEDIA_FOLDERS</a></li>
+<li><a class="reference internal" href="#playlists-folder">PLAYLISTS_FOLDER</a></li>
+<li><a class="reference internal" href="#peers">PEERS</a></li>
+<li><a class="reference internal" href="#vlc-telnet-password">VLC_TELNET_PASSWORD</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#table-of-contents">Table of Contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="install.html"
+                        title="next chapter">Installation</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="install.html" title="Installation"
+             >next</a> |</li>
+        <li><a href="#">dvbbox 0.4 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Thomas Ayih-Akakpo.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>
