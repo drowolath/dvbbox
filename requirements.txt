@@ -1,0 +1,5 @@
+flask>=0.8
+flask-script>=0.6.7
+redis>=2.4
+requests>=0.12
+xmltodict>=0.9

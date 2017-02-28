@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#encoding: utf-8
+# encoding: utf-8
 
 """
 Personalisation des erreurs HTTP communes
@@ -26,6 +26,7 @@ def internal_error(message):
     response.status_code = 500
     return response
 
+
 def not_modified():
     u"""HTTP 304"""
     response = jsonify(
@@ -37,16 +38,20 @@ def not_modified():
     response.status_code = 304
     return response
 
-def no_content():
+
+def no_content(message):
     u"""HTTP 204"""
+    message = message
     response = jsonify(
         {
             'status': 204,
-            'message': 'correctly processed: no content to return'
+            'error': 'no content',
+            'message': message
         }
     )
     response.status_code = 204
     return response
+
 
 def created():
     u"""HTTP 201"""
@@ -59,6 +64,7 @@ def created():
     response.status_code = 201
     return response
 
+
 def bad_request(message):
     u"""HTTP 400"""
     response = jsonify(
@@ -70,6 +76,7 @@ def bad_request(message):
     )
     response.status_code = 400
     return response
+
 
 def unauthorized(message=None):
     u"""HTTP 401"""
@@ -90,6 +97,7 @@ def unauthorized(message=None):
         response.headers['Location'] = url_for('token.request_token')
     return response
 
+
 def not_found(message):
     u"""HTTP 404"""
     response = jsonify(
@@ -101,6 +109,7 @@ def not_found(message):
     )
     response.status_code = 404
     return response
+
 
 def not_allowed():
     u"""HTTP 405"""

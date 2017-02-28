@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-#encoding: utf-8
+# encoding: utf-8
 
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, g
 from flask_httpauth import HTTPBasicAuth
 from .models import User
 from .errors import unauthorized
@@ -10,12 +10,14 @@ from .decorators import json
 token = Blueprint('token', __name__)
 token_auth = HTTPBasicAuth()
 
+
 @token_auth.verify_password
 def verify_password(username, password):
-    g.user = User.query.filter_by(username=username).first()
-    if not g.user:
+    try:
+        g.user = User(username)
+        return g.user.verify_password(password)
+    except ValueError:
         return False
-    return g.user.verify_password(password)
 
 
 @token_auth.error_handler

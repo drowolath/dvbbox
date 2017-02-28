@@ -1,0 +1,29 @@
+[REDIS]
+url=redis://address:port/db
+
+[MEDIA_FOLDERS]
+/my/partition
+
+[PEERS]
+server.domain
+
+[PLAYLISTS]
+/var/tmp/dvbbox/playlists
+
+[LOG]
+filepath=/tmp/dvbbox.log
+level=10
+datefmt=%d-%m-%Y %H:%M:%S
+
+[FLASK]
+DEBUG=True
+USE_AUTH_TOKEN=True
+SECRET_KEY=somethingdeeplysecret
+
+[SERVICE:100]
+name=My Channel's name
+pid_video=2000
+pid_audio=2001
+vlc_telnet_port=4201
+vlc_telnet_password=somethingverysecret
+udp=mcast_address:port

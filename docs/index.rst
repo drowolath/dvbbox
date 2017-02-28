@@ -3,90 +3,103 @@
 dvbbox
 ======
 
-dvbbox is a very simple library for managing static media file and
-orchestrating their streaming to allow one to create a TV channel.
+dvbbox est un gestionnaire de listes de lecture de fichiers media (au format TS).
+Il donne la possibilité de créer des listes de lecture qui seront diffusées plus tard via DVB-IP.
 
-You will just have to tell dvbbox where you store your files and you can then use it
-to manage said files, create playlists and launch them for IP streaming.
+.. _dvbbox_pre_requis:
 
-.. attention::
-
-   the media files must already be transcoded following the
-   `MPEG-TS <https://en.wikipedia.org/wiki/MPEG_transport_stream>`_ standard
-
-
-How to use
+Pré-requis
 ----------
 
-At the very moment, dvbbox requires an awful amount of presets before working properly.
-We are working on that, but bear with us as we explain why it is so.
+A lui tout seul, dvbbox réutilise bon nombre de logiciels:
 
-Data storage
-************
+* avprobe: pour lire les métadonnées d'un fichier TS
+  
+* vlc-nox: pour diffuser effectivement une playlist au format XSPF
+    
+* redis-server: moteur de base de données
 
-dvbbox awaits data to be stored in a redis database (exclusively).
+* python2.7
 
-* you should have a dataset called "files": this dataset is actually a sorted set
-  where the keys are the filepaths of the media files, and the scores their duration.
+  * python-redis (redis)
 
-* playlists are recorded as sorted sets also, named under the format "day:service_id":
-  the keys are strings under the format "filenames:index" (index being an arbitrary value),
-  and their scores are the timestamp at which they are programmed to be played.
+  * python-xmltodict (xmltodict)
 
-Settings
-********
+  * python-flask: pour l'API REST
 
-dvbbox requires you to have a file /etc/dvbbox/settings.py readable by the user actually
-using dvbbox. This file gathers all the settings useful to the application to work.
+  * python-flask-httpauth: pour l'authentification par HTTPAuth à l'API REST
 
-It's a python script, containing declarations of global values.
+  * python-flask-redis: ORM pour gérer la base REDIS via l'application Flask
 
-CHANNELS
-........
+  * python-flask-script: pour créer un outil en CLI
 
-A dictionnary where the keys are service IDs; each one of them holds another dictionnary
-with the following keys: name, audio_pid, video_pid, vlc_telnet_port, udp_multicast
+.. _dvbbox_installation:
+  
+Installation
+------------
 
-DATABASE
-........
+Parce qu'on na pas de serveur de packages Python, on va devoir cloner le projet
+et créer un .deb
 
-A dictionnary where the keys are keyword arguments used in the redis.Redis function.
-Essentially: host, port, db, password.
+.. code-block:: bash
 
-LOGFILE
-.......
+   $ git clone http://gitlab.blueline.mg/default/dvbbox.git
+   $ cd dvbbox
+   dvbbox$ make
+   dvbbox$ sudo make install
+		
+.. _dvbbox_conf:
 
-A string representing the full path to the file holding the logs
+Configuration
+-------------
 
-MEDIA_FOLDERS
-.............
+dvbbox range sa configuration dans :file:`/etc/dvbbox/configuration`.
 
-A list of absolute paths to directories where media files are stored
+Techniquement, c'est juste un script Python qui ne contient que des déclarations
+de constantes.
 
-PLAYLISTS_FOLDER
-................
+Ci-dessous un exemple (toutes les constantes listées ici sont celles qui sont obligatoires):
 
-A string representing the full path to the directory holding each channel XSPF file.
+.. code-block:: python
 
-PEERS
-.....
+   [REDIS]
+   url=redis://address:port/db
+   
+   [MEDIA_FOLDERS]
+   /my/partition
+   
+   [PEERS]
+   server.domain
+   
+   [PLAYLISTS]
+   /var/tmp/dvbbox/playlists
+   
+   [LOG]
+   filepath=/tmp/dvbbox.log
+   level=10
+   datefmt=%d-%m-%Y %H:%M:%S
+   
+   [FLASK]
+   DEBUG=True
+   USE_AUTH_TOKEN=True
+   SECRET_KEY=somethingdeeplysecret
+   
+   [SERVICE:100]
+   name=My Channel's name
+   pid_video=2000
+   pid_audio=2001
+   vlc_telnet_port=4201
+   vlc_telnet_password=somethingverysecret
+   udp=mcast_address:port
 
-This notion is important: dvbbox is designed to function as a cluster. So it can
-contact another server to update its content (playlists wise and media files wise).
 
-This settings is a list of dictionnaries. Where each dictionnary is a DATABASE parameter,
-only with a remote server settings.
+.. _dvbbox_toc:
 
-VLC_TELNET_PASSWORD
-...................
-
-A string representing a secret passphrase to access the telnet interface of a VLC stream.
-
-Table of Contents
------------------
+Documentation
+-------------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 4
    :glob:
 
    *

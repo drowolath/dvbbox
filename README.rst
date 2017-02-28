@@ -1,58 +1,66 @@
-dvbbox: Create your own DVB-IP channels
-=======================================
+======
+dvbbox
+======
 
-dvbbox is a very simple library for managing static media file and orchestrating their streaming to
-allow one to create a TV channel.
+dvbbox is a simple tool to manage pre-encoded TS media files, create playlists
+and stream them out.
 
-You will just have to tell dvbbox where you store your files and you can then use it
-to manage said files, create playlists and launch them for IP streaming.
+Requirements
+============
 
-.. attention::
-
-   the media files must already be transcoded following the `MPEG-TS <https://en.wikipedia.org/wiki/MPEG_transport_stream>`_ standard
-
-
-The Basics
-----------
-
-You would create a playlist under the form of an INI file
-
-.. code-block:: bash
-
-   [day/month]
-   filename_1
-   filename_2
-   ...
-
-   [another_day/month]
-   filename_x
-   filename_y
-   ...
-
-And as simple as:
-
-
-.. code-block:: bash
-
-   $ dvbbox process /filepath/to/playlist [--apply]
-
-you test and eventually apply your playlist. The result come with warnings and informations regarding mediafiles missing or mispelled.
-
+* vlc-nox>=2.0.3: for streaming
+* libav-tools>=0.8.17: to check media file's meta-data
+* redis-server>=2.4: to store programs and media file's meta-data
+* an .INI configuration file (see: :ref:`dvbbox_config`)
 
 Installation
-------------
+============
 
-.. code-block:: bash
+.. important::
 
-   $ pip install dvbbox
+   Make sure you did install vlc-nox, libav-tools, and redis-server first!
 
-Configuration
--------------
+You can install a .deb packaged version:
 
-dvbbox awaits `/etc/dvbbox/settings.py`. An example can be found at the root of this repo.
-   
-REST API
---------
+.. code-block::
 
-The tool comes with an additional bonus: a REST API interfacing all the functionalities provided by the command-line tool
+   $ git clone http://gitlab.blueline.mg/default/dvbbox.git
+   $ cd dvbbox
+   $ make
+   $ sudo make install
 
+Or if you don't want to use some arbitrary packaging format (and you shouldn't):
+
+.. code-block::
+
+   $ git clone http://gitlab.blueline.mg/default/dvbbox.git
+   $ cd dvbbox
+   $ pip install -r requirements.txt
+   $ python setup.py sdist
+   $ pip install dist/python-dvbbox-*.tar.gz --user
+
+Some quick notions
+==================
+
+dvbbox uses three (3) major concepts:
+
+* Media: pre-encoded TS media files
+* Program: a timetable giving the start time of different media files for a given day and a given
+service id
+* Listing: an .INI file where sections are dates (formatted as %d/%m) and options are media
+file names (no path, no extension)
+
+dvbbox allows you to:
+
+* seek informations for, rename and delete media files
+* seek informations for, check, update, backup, delete and stream programs
+* parse and apply listings
+
+For a provided listing, dvbbox will parse it and create a program out of it. If some media files
+don't exist at all (on the server and on the eventual peers), their duration is set to 0 and the
+parsing goes on.
+
+Documentation
+=============
+
+Full documentation is available at http://docs.malagasy.com/dvbbox

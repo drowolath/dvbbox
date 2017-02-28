@@ -1,8 +1,14 @@
 #!/usr/bin/env python
-#encoding: utf-8
+# encoding: utf-8
 
-
+import os
 from setuptools import setup, find_packages
+
+datafiles = [
+    ('/etc/dvbbox/', [os.path.join(d, f) for f in files])
+    for d, folders, files in os.walk(os.path.abspath('example'))
+    ]
+
 
 def readme():
     with open('README.rst') as f:
@@ -10,17 +16,16 @@ def readme():
     
 setup(
     name="dvbbox",
-    version="0.4",
-    packages=['dvbbox'],
+    version="3.2",
+    packages=find_packages(),
     author="Thomas Ayih-Akakpo",
-    author_email="thomas@ayih-akakpo.org",
-    description=("Library for managing static media files "
-                 "and orchestrating their streaming"),
+    author_email="thomas.ayih-akakpo@gulfsat.mg",
+    description="Media files manager",
     long_description=readme(),
-    license='MIT',
+    license='Apache 2.0',
     include_package_data=True,
-    entry_points = {
-        'console_scripts': ['dvbbox=dvbbox:cli.run'],
+    data_files=datafiles,
+    entry_points={
+        'console_scripts': ['dvbbox=dvbbox:manager.run'],
         },
-    url='http://github.com/drowolath/dvbbox.git',
 )
