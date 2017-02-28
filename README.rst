@@ -24,7 +24,7 @@ You can install a .deb packaged version:
 
 .. code-block::
 
-   $ git clone http://gitlab.blueline.mg/default/dvbbox.git
+   $ git clone https://github.com/drowolath/dvbbox.git
    $ cd dvbbox
    $ make
    $ sudo make install
@@ -33,7 +33,7 @@ Or if you don't want to use some arbitrary packaging format (and you shouldn't):
 
 .. code-block::
 
-   $ git clone http://gitlab.blueline.mg/default/dvbbox.git
+   $ git clone https://github.com/drowolath/dvbbox.git
    $ cd dvbbox
    $ pip install -r requirements.txt
    $ python setup.py sdist
@@ -63,4 +63,4 @@ parsing goes on.
 Documentation
 =============
 
-Full documentation is available at http://docs.malagasy.com/dvbbox
+Full documentation is available under folder docs/
